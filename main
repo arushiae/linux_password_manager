@@ -1,0 +1,91 @@
+# path for file to store data
+user_data_file="/home/ubuntu/scripts/user-data.csv"
+
+# function to generate a strong password
+generate_strong_password() {
+    password=$(openssl rand -base64 16 | tr -dc 'A-Za-z0-9!@#$%^&*()' | head -c 14)
+    echo "$password"
+}
+
+# function to add user data
+add_password() {
+    read -p "Enter account name: " account_id
+    read -p "Choose password manually or generate a strong password? (manual/strong): " password_option
+
+    if [ "$password_option" == "manual" ]; then
+        read -p "Password: " password
+    elif [ "$password_option" == "strong" ]; then
+        password=$(generate_strong_password)
+        echo "Generated strong password: $password"
+    else
+        echo "Invalid option. Exiting..."
+        exit 1
+    fi
+
+    echo
+    echo "$account_id,$password" >> "$user_data_file"
+    echo
+    echo "Data Saved"
+}
+
+# function to retrieve data
+get_password() {
+    read -p "Enter account name: " account_id
+    password=$(grep "^$account_id" $user_data_file | awk -F ',' '{print $2}' )
+    if [ -n "$password" ]; then
+        echo "Your password is: $password"
+    else
+        echo "User Id is not found"
+    fi
+}
+
+# function to delete data
+delete_data() {
+    read -p "Enter account id: " account_id
+    if grep -q "^$account_id," "$user_data_file"; then
+        sed -i "/^$account_id,/d" "$user_data_file"
+        echo "User details with $account_id is deleted"
+    else
+        echo "Account not found"
+    fi
+}
+
+# function to update password
+update_password() {
+    read -p "Enter account id: " account_id
+    if grep -q "^$account_id," "$user_data_file"; then
+        read -p "Choose password manually or generate a strong password? (manual/strong): " password_option
+
+        if [ "$password_option" == "manual" ]; then
+            read -p "Enter new password: " password
+        elif [ "$password_option" == "strong" ]; then
+            password=$(generate_strong_password)
+            echo "Generated strong password: $password"
+        else
+            echo "Invalid option. Exiting..."
+            exit 1
+        fi
+
+        echo
+        sed -i "s/^\($account_id,\).*/\1$password/" "$user_data_file"
+        echo "Password is updated for $account_id"
+    else
+        echo "Account Id not found"
+    fi
+}
+
+# to get input from user
+read -p "Enter action (add/get/update/delete): " action
+
+# check user action
+if [ "$action" == "add" ]; then
+    add_password
+elif [ "$action" == "get" ]; then
+    get_password
+elif [ "$action" == "delete" ]; then
+    delete_data
+elif [ "$action" == "update" ]; then
+    update_password
+else
+    echo "Invalid selection"
+fi
